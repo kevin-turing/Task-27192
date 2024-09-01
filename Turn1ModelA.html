@@ -1,97 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Heart Attack Predictive Analysis Dashboard</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Industry Trends Dashboard</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-      }
-      #uploadArea {
-        padding: 20px;
-        background-color: #f9f9f9;
-        border: 1px solid #ccc;
-        margin-bottom: 20px;
-      }
-      #charts {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-      .chart {
-        margin: 20px;
-        width: 400px;
-        height: 300px;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="uploadArea">
-      <input type="file" id="fileInput" accept=".csv" />
-      <button onclick="processCSV()">Process CSV</button>
+    <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.3.0/dist/simple-statistics.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>AI Industry Trends Dashboard</h1>
+        <input type="file" id="fileInput" accept=".csv">
+        <div class="chart-container" style="width: 80vw; height: 50vh;">
+            <canvas id="aiTrendChart"></canvas>
+        </div>
     </div>
-    <div id="charts"></div>
+
     <script>
-      function processCSV() {
-        const fileInput = document.getElementById('fileInput');
-        Papa.parse(fileInput.files[0], {
-          header: true,
-          complete: function (results) {
-            const data = results.data;
-            visualizeData(data);
-          },
-        });
-      }
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
 
-      function visualizeData(data) {
-        const chartsDiv = document.getElementById('charts');
-        chartsDiv.innerHTML = '';
+        let data = [];
+        let chart;
 
-        // Example Visualization: Age vs. Heart Attack
-        const ageData = data.map((row) => ({
-          age: row.Age,
-          heartAttack: row.Heart_Attack,
-        }));
-        const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-        const width = 400 - margin.left - margin.right;
-        const height = 300 - margin.top - margin.bottom;
+        function handleFileSelect(evt) {
+            Papa.parse(evt.target.files[0], {
+                header: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                    data = results.data;
+                    visualizeData(data);
+                }
+            });
+        }
 
-        const xScale = d3
-          .scaleLinear()
-          .domain([0, d3.max(ageData, (d) => d.age)])
-          .range([0, width]);
-        const yScale = d3
-          .scaleLinear()
-          .domain([0, 1]) // Assuming Heart Attack is binary (0,1)
-          .range([height, 0]);
+        function visualizeData(data) {
+            const ctx = document.getElementById('aiTrendChart').getContext('2d');
+            if (chart) chart.destroy();
 
-        const svg = d3
-          .select('#charts')
-          .append('svg')
-          .attr('width', width + margin.left + margin.right)
-          .attr('height', height + margin.top + margin.bottom)
-          .append('g')
-          .attr('transform', `translate(${margin.left}, ${margin.top})`);
+            const industryData = groupByIndustry(data);
+            const datasets = Object.keys(industryData).map(industry => {
+                return {
+                    label: industry,
+                    data: industryData[industry].map(item => ({ x: item.Year, y: item.Investment })),
+                    fill: false,
+                    borderColor: getRandomColor()
+                };
+            });
 
-        svg
-          .selectAll('circle')
-          .data(ageData)
-          .enter()
-          .append('circle')
-          .attr('cx', (d) => xScale(d.age))
-          .attr('cy', (d) => yScale(d.heartAttack))
-          .attr('r', 5);
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    scales: {
+                        x: { type: 'linear', position: 'bottom' },
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                // Simulate pointers for investment trends
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-        svg
-          .append('g')
-          .attr('transform', `translate(0, ${height})`)
-          .call(d3.axisBottom(xScale));
+        function groupByIndustry(data) {
+            const grouped = {};
+            data.forEach(item => {
+                if (!grouped[item.Industry]) grouped[item.Industry] = [];
+                grouped[item.Industry].push(item);
+            });
+            return grouped;
+        }
 
-        svg.append('g').call(d3.axisLeft(yScale));
-      }
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF'.split('');
+            var color = '#';
+            for (var i = 0; i < 6; i++ ) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
     </script>
-  </body>
+</body>
 </html>

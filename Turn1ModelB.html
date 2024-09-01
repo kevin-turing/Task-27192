@@ -1,163 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Heart Attack Predictive Analysis Dashboard</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trends Visualization</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 20px;
-        background-color: #f4f4f4;
-      }
-      .container {
-        max-width: 1200px;
-        margin: auto;
-      }
-      #uploadSection {
-        margin-bottom: 20px;
-      }
-      #charts {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-around;
-      }
-      .chart-container {
-        width: 45%;
-        min-width: 300px;
-        margin: 10px;
-        background: white;
-        padding: 20px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
+        canvas {
+            max-width: 800px;
+            margin: auto;
+        }
     </style>
-  </head>
-  <body>
-    <div class="container">
-      <h2>Heart Attack Predictive Analysis</h2>
-      <div id="uploadSection">
-        <input type="file" id="csvFile" accept=".csv" />
-        <button onclick="processCSV()">Process CSV</button>
-      </div>
-
-      <div id="charts"></div>
+</head>
+<body>
+    <div class="container mt-5">
+        <input type="file" id="csvFileInput" accept=".csv" class="mb-3">
+        <div class="row">
+            <div class="col">
+                <canvas id="industryTrendsChart"></canvas>
+            </div>
+            <div class="col">
+                <canvas id="investmentTrendsChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <script>
-      let data = [];
+    const fileInput = document.getElementById('csvFileInput');
+    let data = [];
 
-      function processCSV() {
-        const fileInput = document.getElementById('csvFile');
-        const file = fileInput.files[0];
-        Papa.parse(file, {
-          header: true,
-          dynamicTyping: true,
-          complete: function (results) {
-            data = results.data;
-            visualizeData();
-          },
+    fileInput.onchange = function(e) {
+        Papa.parse(e.target.files[0], {
+            header: true,
+            dynamicTyping: true,
+            complete: function(results) {
+                data = results.data;
+                visualizeData();
+            }
         });
-      }
+    };
 
-      function visualizeData() {
-        document.getElementById('charts').innerHTML = ''; // Clear previous charts
+    function visualizeData() {
+        const ctxIndustry = document.getElementById('industryTrendsChart').getContext('2d');
+        const ctxInvestment = document.getElementById('investmentTrendsChart').getContext('2d');
 
-        // Example visualizations - you would expand these with more detailed analysis
-        const ageDistribution = calculateAgeDistribution();
-        const genderRisk = calculateGenderRisk();
+        // Simplistic data processing for demonstration
+        let industryData = processDataForChart(data, 'Industry', 'AI Rating Score');
+        let investmentData = processDataForChart(data, 'Industry', 'Investment in AI (USD Million)');
 
-        // Age Distribution Chart
-        createChart(
-          'Age Distribution',
-          'ageDistribution',
-          'bar',
-          ageDistribution.labels,
-          ageDistribution.data
-        );
-
-        // Gender Risk Chart
-        createChart(
-          'Gender Risk of Heart Attack',
-          'genderRisk',
-          'pie',
-          ['Male', 'Female'],
-          [genderRisk.male, genderRisk.female]
-        );
-      }
-
-      function calculateAgeDistribution() {
-        let ageGroups = { 'Below 40': 0, '40-59': 0, '60+': 0 };
-        data.forEach((entry) => {
-          if (entry.Age < 40) ageGroups['Below 40']++;
-          else if (entry.Age < 60) ageGroups['40-59']++;
-          else ageGroups['60+']++;
+        new Chart(ctxIndustry, {
+            type: 'line',
+            data: industryData,
+            options: {
+                responsive: true,
+                title: { display: true, text: 'AI Rating Score Trends' },
+                tooltips: { mode: 'index', intersect: false },
+            }
         });
+
+        new Chart(ctxInvestment, {
+            type: 'line',
+            data: investmentData,
+            options: {
+                responsive: true,
+                title: { display: true, text: 'Investment Trends with Predictive Analysis' },
+                tooltips: { mode: 'index', intersect: false },
+                // Here you would typically add future prediction with different styling
+            }
+        });
+    }
+
+    function processDataForChart(data, groupBy, valueField) {
+        let groups = {};
+        data.forEach(row => {
+            if (!groups[row[groupBy]]) groups[row[groupBy]] = {};
+            if (!groups[row[groupBy]][row['Year']]) groups[row[groupBy]][row['Year']] = 0;
+            groups[row[groupBy]][row['Year']] += row[valueField];
+        });
+
         return {
-          labels: Object.keys(ageGroups),
-          data: Object.values(ageGroups),
+            labels: Object.keys(groups).reduce((acc, key) => [...acc, ...Object.keys(groups[key])], []).filter((v, i, a) => a.indexOf(v) === i).sort(),
+            datasets: Object.keys(groups).map(key => ({
+                label: key,
+                data: Object.keys(groups[key]).map(year => groups[key][year]),
+                borderColor: 'rgba(' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ',1)',
+                fill: false
+            }))
         };
-      }
-
-      function calculateGenderRisk() {
-        let genderCount = { male: 0, female: 0 };
-        let genderWithAttack = { male: 0, female: 0 };
-        data.forEach((entry) => {
-          if (entry.Gender === 'Male') {
-            genderCount.male++;
-            if (entry.Heart_Attack === 1) genderWithAttack.male++;
-          } else {
-            genderCount.female++;
-            if (entry.Heart_Attack === 1) genderWithAttack.female++;
-          }
-        });
-        return {
-          male: (genderWithAttack.male / genderCount.male) * 100,
-          female: (genderWithAttack.female / genderCount.female) * 100,
-        };
-      }
-
-      function createChart(title, id, type, labels, data) {
-        let container = document.createElement('div');
-        container.className = 'chart-container';
-        container.innerHTML = `<canvas id="${id}" width="400" height="400"></canvas>`;
-        document.getElementById('charts').appendChild(container);
-
-        new Chart(document.getElementById(id), {
-          type: type,
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: title,
-                data: data,
-                backgroundColor: [
-                  'rgba(54, 162, 235, 0.2)',
-                  'rgba(255, 99, 132, 0.2)',
-                  'rgba(75, 192, 192, 0.2)',
-                ],
-                borderColor: [
-                  'rgba(54, 162, 235, 1)',
-                  'rgba(255, 99, 132, 1)',
-                  'rgba(75, 192, 192, 1)',
-                ],
-                borderWidth: 1,
-              },
-            ],
-          },
-          options: {
-            title: {
-              display: true,
-              text: title,
-            },
-            scales:
-              type === 'bar'
-                ? { yAxes: [{ ticks: { beginAtZero: true } }] }
-                : {},
-          },
-        });
-      }
+    }
     </script>
-  </body>
+</body>
 </html>
